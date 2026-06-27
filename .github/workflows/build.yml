@@ -1,0 +1,40 @@
+name: Build desktop apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install ".[build]"
+
+      - name: Build app
+        run: >
+          python -m PyInstaller
+          --name "SPass CSV Converter"
+          --windowed
+          --onefile
+          --clean
+          --paths src
+          src/spass_csv_converter/__main__.py
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: spass-csv-converter-${{ matrix.os }}
+          path: dist/*
