@@ -3,7 +3,7 @@ name = "spass-csv-converter"
 version = "0.1.0"
 description = "Convert readable Samsung Pass .spass export files to CSV."
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["cryptography>=41.0.0"]
 
 [project.optional-dependencies]
 build = ["pyinstaller>=6.0"]

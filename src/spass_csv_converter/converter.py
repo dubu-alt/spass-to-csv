@@ -14,6 +14,11 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
 
+from .crypto import SPassDecryptor
+from .errors import SPassError
+from .exporters import ExportFormat, SPassExporter
+from .spass_parser import SPassParser
+
 
 class ConversionError(Exception):
     """Raised when a .spass file cannot be converted."""
@@ -24,6 +29,7 @@ class ConversionResult:
     output_path: Path
     row_count: int
     warnings: tuple[str, ...] = ()
+    format_name: str = ExportFormat.CHROME
 
 
 COMMON_FIELD_ORDER = [
@@ -52,12 +58,44 @@ COMMON_FIELD_ORDER = [
 ]
 
 
-def convert_spass_to_csv(input_path: Path | str, output_path: Path | str) -> ConversionResult:
+def default_output_path(input_path: Path | str, format_name: str = ExportFormat.CHROME) -> Path:
+    path = Path(input_path).expanduser()
+    suffix = "_bitwarden.json" if format_name == ExportFormat.BITWARDEN_JSON else "_passwords.csv"
+    return path.with_name(f"{path.stem}{suffix}")
+
+
+def convert_spass_to_csv(
+    input_path: Path | str,
+    output_path: Path | str,
+    password: str | None = None,
+    format_name: str = ExportFormat.CHROME,
+    strict: bool = False,
+    allow_plain_fallback: bool = True,
+) -> ConversionResult:
     input_path = Path(input_path).expanduser()
     output_path = Path(output_path).expanduser()
 
     if not input_path.exists():
         raise ConversionError(f"File not found: {input_path}")
+
+    if password:
+        try:
+            decrypted = SPassDecryptor(password).decrypt_file(input_path)
+            parsed = SPassParser.parse_decrypted_data(decrypted, strict=strict)
+            row_count = SPassExporter.export(parsed, output_path, format_name)
+        except SPassError as exc:
+            raise ConversionError(str(exc)) from exc
+        except ValueError as exc:
+            raise ConversionError(str(exc)) from exc
+        return ConversionResult(
+            output_path=output_path,
+            row_count=row_count,
+            warnings=tuple(warning.describe() for warning in parsed.warnings),
+            format_name=format_name,
+        )
+
+    if not allow_plain_fallback:
+        raise ConversionError("A Samsung Pass export password is required.")
 
     data = input_path.read_bytes()
     warnings: list[str] = []
@@ -76,7 +114,12 @@ def convert_spass_to_csv(input_path: Path | str, output_path: Path | str) -> Con
         writer.writeheader()
         writer.writerows(records)
 
-    return ConversionResult(output_path=output_path, row_count=len(records), warnings=tuple(warnings))
+    return ConversionResult(
+        output_path=output_path,
+        row_count=len(records),
+        warnings=tuple(warnings),
+        format_name="fallback",
+    )
 
 
 def _extract_records(path: Path, data: bytes, warnings: list[str]) -> list[dict[str, str]]:

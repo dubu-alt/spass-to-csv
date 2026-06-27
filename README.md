@@ -1,10 +1,14 @@
 # SPass CSV Converter
 
-Samsung Pass에서 내보낸 `spass_export_data.spass` 파일을 CSV로 변환하는 맥/윈도우용 변환기입니다.
+Samsung Pass에서 내보낸 `spass_export_data.spass` 파일을 CSV 또는 Bitwarden JSON으로 변환하는 맥/윈도우용 변환기입니다.
 
 ## 중요한 안내
 
-`.spass` 형식은 공개된 표준 포맷이 아닙니다. 이 프로그램은 파일 안의 데이터가 JSON, CSV, XML, SQLite, ZIP 압축 파일처럼 읽을 수 있는 구조일 때 CSV로 변환합니다. 파일이 Samsung 전용 방식으로 암호화되어 있으면 비밀번호를 우회하거나 복호화하지 않으며, 변환할 수 없다는 메시지를 보여줍니다.
+`.spass` 형식은 공개 표준은 아니지만, 알려진 Samsung Pass 내보내기 구조를 지원합니다. 프로그램은 내보내기 비밀번호로 파일을 로컬에서 복호화한 뒤 Chrome/Edge CSV, Proton Pass CSV, Bitwarden JSON 또는 원본 필드 CSV로 저장합니다.
+
+비밀번호 우회 기능은 없으며, 출력 파일에는 평문 비밀번호가 들어갑니다. 가져오기가 끝난 뒤 CSV/JSON 파일은 안전하게 삭제하세요.
+
+복호화/파싱 로직은 MIT 라이선스의 [misterpfister8/spasstocsv](https://github.com/misterpfister8/spasstocsv)를 참고해 보완했습니다. 자세한 출처는 `THIRD_PARTY_NOTICES.md`에 정리했습니다.
 
 ## 사용 방법
 
@@ -20,12 +24,22 @@ python3 -m pip install -e .
 python3 -m spass_csv_converter --gui
 ```
 
-화면에서 `spass_export_data.spass` 파일을 고르고 `Convert to CSV`를 누르면 같은 위치에 CSV 파일을 저장할 수 있습니다.
+화면에서 `spass_export_data.spass` 파일을 고르고 Samsung Pass에서 설정했던 내보내기 비밀번호를 입력한 뒤 형식을 선택해 변환합니다.
 
 ### 명령어로 실행
 
 ```bash
-python3 -m spass_csv_converter spass_export_data.spass output.csv
+python3 -m spass_csv_converter spass_export_data.spass output.csv --format chrome
+```
+
+비밀번호는 화면에 보이지 않게 입력됩니다. 자동화가 필요하면 표준 입력으로 넘길 수 있습니다.
+
+```bash
+printf '내보내기-비밀번호\n' | python3 -m spass_csv_converter \
+  --password-stdin \
+  spass_export_data.spass \
+  output.csv \
+  --format proton
 ```
 
 ## 맥 앱 만들기
@@ -55,11 +69,17 @@ chmod +x scripts/build_macos.sh
 
 ## 지원하는 입력 구조
 
-- JSON 또는 plist 안의 계정 목록
-- CSV 형태의 내보내기
-- XML 안의 반복 레코드
-- SQLite 데이터베이스
-- 위 파일들이 들어 있는 ZIP 기반 `.spass` 파일
+- Samsung Pass 암호화 `.spass`: `Base64(salt + IV + AES-256-CBC 암호문)`
+- PBKDF2-HMAC-SHA256 70,000회 키 파생
+- 복호화 후 semicolon 기반 Samsung Pass 테이블
+- 보조 fallback: JSON, plist, CSV, XML, SQLite, ZIP 기반 읽기 가능한 파일
+
+## 출력 형식
+
+- `chrome`: Chrome/Edge/1Password용 `name,url,username,password,note`
+- `proton`: Proton Pass Generic CSV `name,url,username,password,note,totp`
+- `raw`: Samsung Pass password 테이블 필드 그대로 CSV
+- `bitwarden-json`: 로그인, 보안 노트, 카드, 주소를 Bitwarden JSON으로 저장
 
 ## 개발 확인
 
