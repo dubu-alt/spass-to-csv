@@ -25,6 +25,9 @@ python3 -m spass_csv_converter --gui
 ```
 
 화면에서 `spass_export_data.spass` 파일을 고르고 Samsung Pass에서 설정했던 내보내기 비밀번호를 입력한 뒤 형식을 선택해 변환합니다.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/3cdbee2d-2dec-4317-9341-eec93b2e86a7" width="600" alt="SPass CSV Converter GUI">
+</p>
 
 ### 명령어로 실행
 
