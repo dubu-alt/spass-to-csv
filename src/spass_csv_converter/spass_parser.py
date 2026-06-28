@@ -11,6 +11,8 @@ from .models import ParsedSPass, SPassTable, SPassWarning, WarningCode
 
 class SPassParser:
     DEFAULT_TABLE_TYPES = ["passwords", "cards", "addresses", "notes"]
+    SILENT_FALLBACK_FIELDS = frozenset({"favicon"})
+
     TYPE_ALIASES = {
         "password": "passwords",
         "passwords": "passwords",
@@ -209,7 +211,8 @@ class SPassParser:
                 raise SPassFormatError(
                     f"Invalid base64/UTF-8 in table {table_number}, row {row_number}, field '{header}'"
                 ) from exc
-            warnings.append(
+            if header not in SPassParser.SILENT_FALLBACK_FIELDS:
+                warnings.append(
                 SPassWarning(
                     code=WarningCode.RAW_FIELD_FALLBACK,
                     message="Field was not valid base64/UTF-8 and was kept as raw text",
@@ -219,4 +222,4 @@ class SPassParser:
                     field=header,
                 )
             )
-            return field
+        return field
