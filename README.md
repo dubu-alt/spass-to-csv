@@ -18,6 +18,49 @@ Samsung Pass에서 내보낸 `spass_export_data.spass` 파일을 CSV 또는 Bitw
 
 > 저장소 관리자: GitHub 저장소 Settings → Pages → Source를 **GitHub Actions**로 설정하면 `docs/index.html`이 자동 배포됩니다.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/0e82014b-6a30-456e-b2e0-ca900637d38e" width="60%" alt="spass_site" />
+</p>
+
+<details>
+<summary><h2>웹 버전 동작 방식에 대해서..</h2></summary>
+<div markdown="1">
+
+웹 버전(https://dubu-alt.github.io/spass-to-csv/)은 서버가 없는 정적 페이지입니다.
+페이지를 여는 순간 변환 코드(JavaScript) 전체가 브라우저에 다운로드되고,
+그 이후의 모든 동작은 사용자 컴퓨터 안에서만 실행됩니다.
+
+**변환 과정**
+
+1. 선택한 `.spass` 파일을 브라우저 메모리로 읽습니다 (업로드 아님)
+2. 입력한 비밀번호로 PBKDF2-HMAC-SHA256(70,000회) 키를 만들어
+   AES-256-CBC 복호화합니다 — 브라우저 내장 WebCrypto API 사용
+3. 복호화된 Samsung Pass 테이블을 파싱해 선택한 형식(CSV/JSON)으로 변환합니다
+4. 결과를 브라우저 메모리(Blob)에서 곧바로 내 컴퓨터에 다운로드합니다
+
+파일과 비밀번호, 변환 결과는 어떤 서버에도 전송되지 않으며
+브라우저에 저장(localStorage 등)되지도 않습니다.
+Python 버전과 동일한 변환 로직이며, 동일 입력에 대해 동일한 출력을 생성합니다.
+
+**안전장치**
+
+- 외부 라이브러리/CDN 없이 HTML 파일 하나로 완결 — 외부 요청이 발생할 코드가 없음
+- CSP(Content-Security-Policy) 적용 — 만에 하나 악성 코드가 끼어들어도
+  브라우저가 모든 외부 전송(fetch, 폼 제출 등)을 차단
+- HTTPS로만 제공되어 전송 중 코드 변조 불가
+
+**직접 확인하는 방법**
+
+- 변환 전에 개발자 도구(F12) → Network 탭을 열어두면 변환 중 네트워크 요청이
+  하나도 발생하지 않는 것을 볼 수 있습니다
+- 페이지를 연 뒤 인터넷을 끊고 변환해도 정상 동작합니다
+- 저장소의 `docs/index.html`이 페이지의 전부이므로 코드 전체를 직접 검토할 수 있습니다
+
+변환된 CSV/JSON에는 평문 비밀번호가 들어 있습니다.
+다른 비밀번호 관리자로 가져오기가 끝나면 반드시 파일을 안전하게 삭제하세요.
+</div>
+</details>
+
 ### 2. 맥/윈도우 앱 다운로드
 
 [Releases](https://github.com/dubu-alt/spass-to-csv/releases)에서 맥용 zip 또는 윈도우용 `.exe`를 받아 더블클릭하면 됩니다. `v1.0.0`처럼 `v`로 시작하는 태그를 푸시하면 GitHub Actions가 자동으로 빌드해서 Releases에 올립니다.
