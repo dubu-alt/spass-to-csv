@@ -8,6 +8,7 @@ py -m PyInstaller `
   --onefile `
   --clean `
   --paths src `
+  --collect-all tkinterdnd2 `
   src/spass_csv_converter/__main__.py
 
 Write-Host "Windows app created in dist/"

@@ -12,6 +12,22 @@ Samsung Pass에서 내보낸 `spass_export_data.spass` 파일을 CSV 또는 Bitw
 
 ## 사용 방법
 
+### 1. 설치 없이 웹에서 사용 (가장 쉬움)
+
+브라우저에서 [https://dubu-alt.github.io/spass-to-csv/](https://dubu-alt.github.io/spass-to-csv/) 를 열고 `.spass` 파일을 끌어다 놓은 뒤 비밀번호를 입력하면 끝입니다. 복호화와 변환은 전부 브라우저 안에서만 실행되며 파일과 비밀번호는 어떤 서버에도 전송되지 않습니다. 인터넷을 끊고 사용해도 됩니다.
+
+> 저장소 관리자: GitHub 저장소 Settings → Pages → Source를 **GitHub Actions**로 설정하면 `docs/index.html`이 자동 배포됩니다.
+
+### 2. 맥/윈도우 앱 다운로드
+
+[Releases](https://github.com/dubu-alt/spass-to-csv/releases)에서 맥용 zip 또는 윈도우용 `.exe`를 받아 더블클릭하면 됩니다. `v1.0.0`처럼 `v`로 시작하는 태그를 푸시하면 GitHub Actions가 자동으로 빌드해서 Releases에 올립니다.
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+### 3. Python으로 직접 실행
+
 처음 한 번만 아래 명령으로 프로그램을 설치합니다.
 
 ```bash
@@ -24,7 +40,7 @@ python3 -m pip install -e .
 python3 -m spass_csv_converter --gui
 ```
 
-화면에서 `spass_export_data.spass` 파일을 고르고 Samsung Pass에서 설정했던 내보내기 비밀번호를 입력한 뒤 형식을 선택해 변환합니다.
+화면에서 `spass_export_data.spass` 파일을 고르고 Samsung Pass에서 설정했던 내보내기 비밀번호를 입력한 뒤 형식을 선택해 변환합니다. 비밀번호 표시 토글, 변환 후 저장 폴더 열기 버튼을 지원하며, `pip install "spass-csv-converter[gui]"`로 `tkinterdnd2`를 설치하면 창에 파일을 끌어다 놓을 수도 있습니다.
 <p align="center">
   <img src="https://github.com/user-attachments/assets/3cdbee2d-2dec-4317-9341-eec93b2e86a7" width="600" alt="SPass CSV Converter GUI">
 </p>
