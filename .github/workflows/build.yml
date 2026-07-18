@@ -36,7 +36,7 @@ jobs:
           --clean
           --paths src
           --collect-all tkinterdnd2
-          src/spass_csv_converter/__main__.py
+          scripts/pyinstaller_entry.py
 
       - name: Package release file (macOS)
         if: runner.os == 'macOS'

@@ -9,6 +9,6 @@ py -m PyInstaller `
   --clean `
   --paths src `
   --collect-all tkinterdnd2 `
-  src/spass_csv_converter/__main__.py
+  scripts/pyinstaller_entry.py
 
 Write-Host "Windows app created in dist/"
