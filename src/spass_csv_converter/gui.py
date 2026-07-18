@@ -38,15 +38,26 @@ def _open_in_file_manager(path: Path) -> None:
         pass
 
 
-def run_gui() -> None:
+def _create_root() -> tuple[Tk, bool, object]:
+    """Create the root window, enabling drag-and-drop only when tkinterdnd2 fully works.
+
+    tkinterdnd2 can fail in two ways: the Python package is missing (ImportError),
+    or the bundled native tkdnd library fails to load at Tk() creation time
+    (TclError/RuntimeError — common in PyInstaller builds). Fall back to a plain
+    Tk window in every failure case instead of crashing on startup.
+    """
     try:
         from tkinterdnd2 import DND_FILES, TkinterDnD  # type: ignore[import-not-found]
+    except Exception:
+        return Tk(), False, None
+    try:
+        return TkinterDnD.Tk(), True, DND_FILES
+    except Exception:
+        return Tk(), False, None
 
-        root: Tk = TkinterDnD.Tk()
-        dnd_available = True
-    except ImportError:
-        root = Tk()
-        dnd_available = False
+
+def run_gui() -> None:
+    root, dnd_available, dnd_files = _create_root()
 
     root.title("SPass CSV Converter")
     root.minsize(640, 340)
@@ -210,7 +221,10 @@ def run_gui() -> None:
             if paths:
                 set_input(paths[0])
 
-        root.drop_target_register(DND_FILES)  # type: ignore[attr-defined]
-        root.dnd_bind("<<Drop>>", on_drop)  # type: ignore[attr-defined]
+        try:
+            root.drop_target_register(dnd_files)  # type: ignore[attr-defined]
+            root.dnd_bind("<<Drop>>", on_drop)  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     root.mainloop()
