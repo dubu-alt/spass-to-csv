@@ -37,7 +37,29 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.gui or not args.input:
-        run_gui()
+        try:
+            run_gui()
+        except Exception:  # pragma: no cover - last-resort crash reporting for windowed builds
+            import traceback
+
+            log_path = Path.home() / "spass-csv-converter-error.log"
+            try:
+                log_path.write_text(traceback.format_exc(), encoding="utf-8")
+            except OSError:
+                pass
+            try:
+                from tkinter import Tk, messagebox
+
+                hidden = Tk()
+                hidden.withdraw()
+                messagebox.showerror(
+                    "SPass CSV Converter",
+                    f"프로그램 실행 중 오류가 발생했습니다.\n\n오류 내용이 저장된 파일:\n{log_path}",
+                )
+                hidden.destroy()
+            except Exception:
+                traceback.print_exc()
+            return 1
         return 0
 
     input_path = Path(args.input)
