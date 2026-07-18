@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -31,10 +35,31 @@ jobs:
           --onefile
           --clean
           --paths src
+          --collect-all tkinterdnd2
           src/spass_csv_converter/__main__.py
+
+      - name: Package release file (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r "SPass-CSV-Converter-macOS.zip" "SPass CSV Converter.app"
+
+      - name: Package release file (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Copy-Item "dist/SPass CSV Converter.exe" "dist/SPass-CSV-Converter-Windows.exe"
 
       - name: Upload app
         uses: actions/upload-artifact@v4
         with:
           name: spass-csv-converter-${{ matrix.os }}
           path: dist/*
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/SPass-CSV-Converter-macOS.zip
+            dist/SPass-CSV-Converter-Windows.exe
+          generate_release_notes: true

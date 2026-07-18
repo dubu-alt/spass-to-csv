@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPass CSV 변환기 — 설치 없이 브라우저에서</title>
+<meta name="description" content="Samsung Pass .spass 파일을 브라우저에서 로컬로 CSV/Bitwarden JSON으로 변환합니다. 파일과 비밀번호는 어디에도 전송되지 않습니다.">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1a1d21; --muted: #6b7280;
+    --accent: #2563eb; --accent-hover: #1d4ed8; --border: #e2e5ea;
+    --ok: #16a34a; --warn: #b45309; --err: #dc2626; --drop-bg: #eff4ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111418; --card: #1b1f26; --text: #e7e9ec; --muted: #9aa2ad;
+      --accent: #3b82f6; --accent-hover: #60a5fa; --border: #2c323b;
+      --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --drop-bg: #1a2333;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px; margin-bottom: 16px;
+  }
+  .notice {
+    font-size: 14px; color: var(--muted); border-left: 3px solid var(--accent);
+    padding: 2px 0 2px 12px; margin-bottom: 20px;
+  }
+  .drop {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 36px 20px;
+    text-align: center; cursor: pointer; transition: all .15s; color: var(--muted);
+  }
+  .drop.hover { border-color: var(--accent); background: var(--drop-bg); }
+  .drop.hasfile { border-style: solid; border-color: var(--ok); color: var(--text); }
+  .drop strong { color: var(--accent); }
+  label { display: block; font-size: 14px; font-weight: 600; margin: 18px 0 6px; }
+  input[type=password], input[type=text], select {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--border);
+    border-radius: 9px; font-size: 15px; background: var(--bg); color: var(--text);
+  }
+  .pwrow { position: relative; }
+  .pwrow button {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 6px;
+  }
+  .btn {
+    width: 100%; margin-top: 22px; padding: 13px; font-size: 16px; font-weight: 700;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px; cursor: pointer;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .result { display: none; }
+  .result.show { display: block; }
+  .ok { color: var(--ok); font-weight: 700; }
+  .err-box { color: var(--err); font-size: 14px; margin-top: 14px; display: none; white-space: pre-wrap; }
+  .warn-box { color: var(--warn); font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+  .dl {
+    display: inline-block; margin-top: 12px; padding: 11px 22px; background: var(--ok);
+    color: #fff; border: none; border-radius: 9px; font-size: 15px; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+  }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .foot { font-size: 13px; color: var(--muted); text-align: center; margin-top: 28px; }
+  .foot a { color: var(--accent); }
+  details { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  summary { cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SPass CSV 변환기</h1>
+  <p class="sub">Samsung Pass 내보내기(<code>.spass</code>) 파일을 Chrome/Proton CSV 또는 Bitwarden JSON으로 변환</p>
+
+  <div class="card">
+    <p class="notice">
+      설치가 필요 없습니다. 모든 복호화·변환은 <b>이 브라우저 안에서만</b> 실행되며,
+      파일과 비밀번호는 어떤 서버에도 전송되지 않습니다. 인터넷을 끊고 사용해도 됩니다.
+    </p>
+
+    <div class="drop" id="drop" tabindex="0">
+      <span id="dropText">여기에 <strong>spass_export_data.spass</strong> 파일을 끌어다 놓거나 클릭해서 선택</span>
+    </div>
+    <input type="file" id="file" accept=".spass" hidden>
+
+    <label for="pw">Samsung Pass 내보내기 비밀번호</label>
+    <div class="pwrow">
+      <input type="password" id="pw" autocomplete="off" placeholder="내보낼 때 설정한 비밀번호">
+      <button type="button" id="pwToggle">표시</button>
+    </div>
+
+    <label for="fmt">출력 형식</label>
+    <select id="fmt">
+      <option value="chrome">Chrome / Edge / 1Password CSV</option>
+      <option value="proton">Proton Pass CSV (TOTP 포함)</option>
+      <option value="bitwarden-json">Bitwarden JSON (카드·메모·주소 포함)</option>
+      <option value="raw">원본 필드 CSV</option>
+    </select>
+
+    <button class="btn" id="go" disabled>변환하기</button>
+    <div class="err-box" id="err"></div>
+
+    <div class="result card" id="result" style="margin-top:16px">
+      <div class="ok" id="okMsg"></div>
+      <div class="warn-box" id="warns"></div>
+      <button class="dl" id="dl">파일 다운로드</button>
+      <p class="hint">출력 파일에는 <b>평문 비밀번호</b>가 들어 있습니다. 다른 앱으로 가져오기가 끝나면 반드시 파일을 안전하게 삭제하세요.</p>
+    </div>
+  </div>
+
+  <details>
+    <summary>지원 형식 / 동작 방식</summary>
+    <p>Base64(salt 20B + IV 16B + AES-256-CBC 암호문) 구조의 Samsung Pass 내보내기를
+    PBKDF2-HMAC-SHA256(70,000회)로 키를 만들어 복호화한 뒤, semicolon 테이블을 파싱합니다.
+    비밀번호 우회 기능은 없습니다.</p>
+  </details>
+
+  <p class="foot">문제가 있나요? <a href="https://github.com/dubu-alt/spass-to-csv">GitHub 저장소</a>에 알려주세요.
+  데스크톱 앱(맥/윈도우)도 저장소 Releases에서 받을 수 있습니다.</p>
+</div>
+
+<script>
+"use strict";
+/* ============ core: Python 구현(spass_csv_converter)과 동일 로직의 JS 포팅 ============ */
+
+const SALT_BYTES = 20, IV_BYTES = 16, ITERATIONS = 70000, KEY_LENGTH = 256;
+
+function b64decode(str) {
+  const bin = atob(str);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function decryptSpass(fileText, password) {
+  const b64 = fileText.split(/\s+/).join("");
+  if (!b64) throw new Error(".spass 파일이 비어 있습니다.");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) throw new Error(".spass 파일이 올바른 base64 형식이 아닙니다.");
+  let raw;
+  try { raw = b64decode(b64); } catch { throw new Error(".spass 파일이 올바른 base64 형식이 아닙니다."); }
+  if (raw.length < SALT_BYTES + IV_BYTES + 16) throw new Error(".spass 파일이 너무 짧습니다 (salt/IV/암호문 없음).");
+  const salt = raw.slice(0, SALT_BYTES);
+  const iv = raw.slice(SALT_BYTES, SALT_BYTES + IV_BYTES);
+  const ciphertext = raw.slice(SALT_BYTES + IV_BYTES);
+  if (ciphertext.length % 16 !== 0) throw new Error("암호문 길이가 AES 블록 크기와 맞지 않습니다.");
+
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: ITERATIONS },
+    keyMaterial, { name: "AES-CBC", length: KEY_LENGTH }, false, ["decrypt"]
+  );
+  let plainBytes;
+  try {
+    plainBytes = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-CBC", iv }, key, ciphertext));
+  } catch {
+    throw new Error("복호화에 실패했습니다. 비밀번호가 틀렸거나 파일이 손상되었습니다.");
+  }
+  let text;
+  try { text = new TextDecoder("utf-8", { fatal: true }).decode(plainBytes); }
+  catch { throw new Error("복호화에 실패했습니다. 비밀번호가 틀렸거나 파일이 손상되었습니다."); }
+  if (!text.includes("next_table") || !text.includes(";"))
+    throw new Error("복호화된 내용이 Samsung Pass 내보내기 형식이 아닙니다.");
+  return text;
+}
+
+/* ---- semicolon CSV 파싱 (Python csv 모듈 규칙: quotechar ", "" 이스케이프) ---- */
+function parseCsvRecords(text, delim) {
+  const rows = []; let row = [], field = "", inQ = false, i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQ = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"' && field === "") { inQ = true; i++; continue; }
+    if (c === delim) { row.push(field); field = ""; i++; continue; }
+    if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); rows.push(row); row = []; field = ""; i++; continue;
+    }
+    field += c; i++;
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+const DEFAULT_TABLE_TYPES = ["passwords", "cards", "addresses", "notes"];
+const TYPE_ALIASES = {
+  password: "passwords", passwords: "passwords", credential: "passwords", credentials: "passwords",
+  card: "cards", cards: "cards", address: "addresses", addresses: "addresses",
+  identity: "addresses", identities: "addresses", note: "notes", notes: "notes",
+  secure_note: "notes", secure_notes: "notes",
+};
+const HEADER_TYPE_HINTS = {
+  passwords: ["password_value", "username_value", "origin_url", "host_url"],
+  cards: ["card_number", "name_on_card", "expiration_month", "security_code"],
+  addresses: ["street_address", "postal_code", "country_code"],
+  notes: ["note_title", "note_detail"],
+};
+const SILENT_FALLBACK_FIELDS = new Set(["favicon"]);
+
+function decodeField(field, warnings, tableNumber, tableType, rowNumber, header) {
+  if (field === "") return "";
+  const padded = field + "=".repeat((4 - (field.length % 4)) % 4);
+  try {
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(padded)) throw new Error("bad b64");
+    const bytes = b64decode(padded);
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    // 제어문자(탭/개행 등 공백 제외)가 있으면 인쇄 불가로 간주
+    if (text && !/[\u0000-\u0008\u000E-\u001F\u007F-\u009F]/.test(text)) return text;
+    throw new Error("not printable");
+  } catch {
+    if (!SILENT_FALLBACK_FIELDS.has(header)) {
+      warnings.push(`표 ${tableNumber}(${tableType}) ${rowNumber}행 '${header}' 필드가 base64가 아니어서 원본 그대로 유지했습니다.`);
+    }
+    return field;
+  }
+}
+
+function parseDecrypted(decrypted) {
+  const lines = decrypted.split("\n").map(l => l.replace(/\r$/, ""));
+  if (lines.length < 3) throw new Error("잘못된 .spass 데이터: 헤더와 테이블이 없습니다.");
+
+  const first = lines[0].trim();
+  const second = (lines[1] || "").trim();
+  let dataTypes = [], tableLines;
+  if (first === "samsung_pass_export" && second.toLowerCase().startsWith("version:")) {
+    tableLines = lines.slice(2);
+  } else {
+    const tokens = second.replace(/,/g, ";").split(";").map(t => t.trim().toLowerCase()).filter(Boolean);
+    if (tokens.length && tokens.every(t => t === "true" || t === "false")) {
+      dataTypes = tokens.slice(0, DEFAULT_TABLE_TYPES.length)
+        .map((t, i) => (t === "true" ? DEFAULT_TABLE_TYPES[i] : null)).filter(Boolean);
+    } else {
+      dataTypes = tokens.map(t => TYPE_ALIASES[t]).filter(Boolean);
+    }
+    tableLines = lines.slice(2);
+  }
+
+  // next_table 기준으로 청크 분리
+  const chunks = []; let current = [];
+  for (const rawLine of tableLines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line === "next_table") { if (current.length) chunks.push(current); current = []; continue; }
+    if (!current.length && !line.includes(";")) continue;
+    current.push(line);
+  }
+  if (current.length) chunks.push(current);
+  if (!chunks.length) throw new Error("잘못된 .spass 데이터: 데이터 테이블이 없습니다.");
+
+  const warnings = [], tables = [];
+  chunks.forEach((chunk, index) => {
+    const headerRow = parseCsvRecords(chunk[0], ";")[0] || [];
+    let tableType = null;
+    const headerSet = new Set(headerRow);
+    for (const [type, hints] of Object.entries(HEADER_TYPE_HINTS)) {
+      if (hints.some(h => headerSet.has(h))) { tableType = type; break; }
+    }
+    if (!tableType) tableType = index < dataTypes.length ? dataTypes[index] : `table_${index + 1}`;
+    if (tableType.startsWith("table_"))
+      warnings.push(`표 ${index + 1}의 종류를 알 수 없어 '${tableType}'로 표시합니다.`);
+
+    const csvRows = parseCsvRecords(chunk.join("\n"), ";");
+    if (!csvRows.length) throw new Error(`표 ${index + 1}이 비어 있습니다.`);
+    const headers = csvRows[0].map(h => h.trim());
+    if (!headers.length || headers.some(h => !h)) throw new Error(`표 ${index + 1}의 헤더가 잘못되었습니다.`);
+
+    const rows = [];
+    csvRows.slice(1).forEach((fields, rIdx) => {
+      const rowNumber = rIdx + 1;
+      if (fields.length > headers.length) {
+        const start = headers.length + 1;
+        for (let k = 0; k < fields.length - headers.length; k++) headers.push(`extra_${start + k}`);
+        warnings.push(`표 ${index + 1}(${tableType}) ${rowNumber}행에 헤더보다 많은 필드가 있어 extra 열로 보존했습니다.`);
+      }
+      while (fields.length < headers.length) fields.push("");
+      const row = {};
+      headers.forEach((h, i2) => {
+        row[h] = decodeField(fields[i2], warnings, index + 1, tableType, rowNumber, h);
+      });
+      rows.push(row);
+    });
+    tables.push({ type: tableType, headers, rows });
+  });
+
+  if (!tables.some(t => t.type === "passwords" && t.rows.length))
+    warnings.push("비밀번호 행을 찾지 못했습니다.");
+
+  return { tables, warnings };
+}
+
+/* ---- 내보내기 ---- */
+function firstValue(entry, ...keys) {
+  for (const k of keys) if (entry[k]) return entry[k];
+  return "";
+}
+function findTable(parsed, type) { return parsed.tables.find(t => t.type === type) || null; }
+function passwordTable(parsed) {
+  const t = findTable(parsed, "passwords");
+  if (!t) throw new Error("Samsung Pass 내보내기에서 비밀번호 표를 찾지 못했습니다.");
+  return t;
+}
+function mappedRow(entry, includeTotp) {
+  const row = {
+    name: firstValue(entry, "title", "name", "host_url", "origin_url", "url"),
+    url: firstValue(entry, "host_url", "origin_url", "url"),
+    username: firstValue(entry, "username_value", "username", "email"),
+    password: firstValue(entry, "password_value", "password"),
+    note: firstValue(entry, "credential_memo", "note", "notes"),
+  };
+  if (includeTotp) row.totp = firstValue(entry, "otp", "totp");
+  return row;
+}
+function csvEscape(v) {
+  return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function toCsv(headers, rows) {
+  const out = [headers.map(csvEscape).join(",")];
+  for (const r of rows) out.push(headers.map(h => csvEscape(r[h] ?? "")).join(","));
+  return out.join("\n") + "\n";
+}
+function bitwardenItems(parsed) {
+  const items = [];
+  const LOGIN_KEYS = new Set(["title","name","host_url","origin_url","url","username_value","username","email","password_value","password","credential_memo","note","notes","otp","totp"]);
+  const NOTE_KEYS = new Set(["note_title","title","name","note_detail","note","notes"]);
+  const CARD_KEYS = new Set(["reserved_5","card_name","name_on_card","cardholder_name","card_number","number","expiration_month","exp_month","expiration_year","exp_year","security_code","cvv","cvc"]);
+  const ID_KEYS = new Set(["name","full_name","street_address","address1","city","postal_code","zip","country_code","country"]);
+  const addCustom = (item, row, known) => {
+    const fields = Object.entries(row).filter(([k, v]) => !known.has(k) && v)
+      .map(([k, v]) => ({ name: k, value: v, type: 0 }));
+    if (fields.length) item.fields = fields;
+  };
+  const pw = findTable(parsed, "passwords");
+  if (pw) for (const row of pw.rows) {
+    const url = firstValue(row, "host_url", "origin_url", "url");
+    const login = {
+      uris: url ? [{ uri: url }] : [],
+      username: firstValue(row, "username_value", "username", "email"),
+      password: firstValue(row, "password_value", "password"),
+    };
+    const totp = firstValue(row, "otp", "totp");
+    if (totp) login.totp = totp;
+    const item = { type: 1, name: firstValue(row, "title", "name", "host_url", "origin_url", "url"), login };
+    const note = firstValue(row, "credential_memo", "note", "notes");
+    if (note) item.notes = note;
+    addCustom(item, row, LOGIN_KEYS); items.push(item);
+  }
+  const notes = findTable(parsed, "notes");
+  if (notes) for (const row of notes.rows) {
+    const item = {
+      type: 2, name: firstValue(row, "note_title", "title", "name") || "Secure Note",
+      notes: firstValue(row, "note_detail", "note", "notes"), secureNote: { type: 0 },
+    };
+    addCustom(item, row, NOTE_KEYS); items.push(item);
+  }
+  const cards = findTable(parsed, "cards");
+  if (cards) for (const row of cards.rows) {
+    const item = {
+      type: 3, name: firstValue(row, "reserved_5", "card_name", "name_on_card") || "Card",
+      card: {
+        cardholderName: firstValue(row, "name_on_card", "cardholder_name"),
+        number: firstValue(row, "card_number", "number"),
+        expMonth: firstValue(row, "expiration_month", "exp_month"),
+        expYear: firstValue(row, "expiration_year", "exp_year"),
+        code: firstValue(row, "security_code", "cvv", "cvc"),
+      },
+    };
+    addCustom(item, row, CARD_KEYS); items.push(item);
+  }
+  const ids = findTable(parsed, "addresses");
+  if (ids) for (const row of ids.rows) {
+    const item = {
+      type: 4, name: firstValue(row, "name", "full_name") || "Identity",
+      identity: {
+        address1: firstValue(row, "street_address", "address1"),
+        city: firstValue(row, "city"),
+        postalCode: firstValue(row, "postal_code", "zip"),
+        country: firstValue(row, "country_code", "country"),
+      },
+    };
+    addCustom(item, row, ID_KEYS); items.push(item);
+  }
+  return items;
+}
+function exportData(parsed, format) {
+  if (format === "chrome") {
+    const t = passwordTable(parsed);
+    const headers = ["name", "url", "username", "password", "note"];
+    return { content: toCsv(headers, t.rows.map(r => mappedRow(r, false))), count: t.rows.length, ext: "csv", mime: "text/csv" };
+  }
+  if (format === "proton") {
+    const t = passwordTable(parsed);
+    const headers = ["name", "url", "username", "password", "note", "totp"];
+    return { content: toCsv(headers, t.rows.map(r => mappedRow(r, true))), count: t.rows.length, ext: "csv", mime: "text/csv" };
+  }
+  if (format === "raw") {
+    const t = passwordTable(parsed);
+    return { content: toCsv(t.headers, t.rows), count: t.rows.length, ext: "csv", mime: "text/csv" };
+  }
+  if (format === "bitwarden-json") {
+    const items = bitwardenItems(parsed);
+    return { content: JSON.stringify({ encrypted: false, items }, null, 2) + "\n", count: items.length, ext: "json", mime: "application/json" };
+  }
+  throw new Error("지원하지 않는 형식: " + format);
+}
+
+/* ============ UI ============ */
+const $ = id => document.getElementById(id);
+let selectedFile = null, lastBlobUrl = null;
+
+function setFile(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith(".spass")) {
+    showError("확장자가 .spass인 파일을 선택해주세요."); return;
+  }
+  selectedFile = file;
+  $("drop").classList.add("hasfile");
+  $("dropText").innerHTML = "선택된 파일: <strong>" + file.name.replace(/</g, "&lt;") + "</strong> (" + (file.size / 1024).toFixed(1) + " KB)";
+  showError(""); updateButton();
+}
+function updateButton() { $("go").disabled = !(selectedFile && $("pw").value); }
+function showError(msg) {
+  const el = $("err"); el.textContent = msg; el.style.display = msg ? "block" : "none";
+  if (msg) $("result").classList.remove("show");
+}
+
+$("drop").addEventListener("click", () => $("file").click());
+$("drop").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") $("file").click(); });
+$("file").addEventListener("change", e => setFile(e.target.files[0]));
+["dragover", "dragenter"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("hover"); }));
+["dragleave", "drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("hover"); }));
+$("drop").addEventListener("drop", e => setFile(e.dataTransfer.files[0]));
+$("pw").addEventListener("input", updateButton);
+$("pw").addEventListener("keydown", e => { if (e.key === "Enter" && !$("go").disabled) $("go").click(); });
+$("pwToggle").addEventListener("click", () => {
+  const pw = $("pw");
+  pw.type = pw.type === "password" ? "text" : "password";
+  $("pwToggle").textContent = pw.type === "password" ? "표시" : "숨김";
+});
+
+$("go").addEventListener("click", async () => {
+  showError("");
+  $("go").disabled = true; $("go").textContent = "변환 중…";
+  try {
+    const text = await selectedFile.text();
+    const decrypted = await decryptSpass(text, $("pw").value);
+    const parsed = parseDecrypted(decrypted);
+    const format = $("fmt").value;
+    const out = exportData(parsed, format);
+
+    if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+    const blob = new Blob([out.content], { type: out.mime + ";charset=utf-8" });
+    lastBlobUrl = URL.createObjectURL(blob);
+    const base = selectedFile.name.replace(/\.spass$/i, "");
+    const filename = base + "." + format.replace("bitwarden-json", "bitwarden") + "." + out.ext;
+
+    $("okMsg").textContent = `변환 완료 — ${out.count}개 항목 (${format})`;
+    $("warns").textContent = parsed.warnings.length ? "주의:\n" + parsed.warnings.map(w => "· " + w).join("\n") : "";
+    $("dl").onclick = () => {
+      const a = document.createElement("a");
+      a.href = lastBlobUrl; a.download = filename; a.click();
+    };
+    $("result").classList.add("show");
+  } catch (e) {
+    showError(e.message || String(e));
+  } finally {
+    $("go").textContent = "변환하기"; updateButton();
+  }
+});
+</script>
+</body>
+</html>

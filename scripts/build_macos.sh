@@ -9,6 +9,7 @@ python3 -m PyInstaller \
   --onefile \
   --clean \
   --paths src \
+  --collect-all tkinterdnd2 \
   src/spass_csv_converter/__main__.py
 
 echo "macOS app created in dist/"

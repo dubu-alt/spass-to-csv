@@ -6,7 +6,8 @@ requires-python = ">=3.10"
 dependencies = ["cryptography>=41.0.0"]
 
 [project.optional-dependencies]
-build = ["pyinstaller>=6.0"]
+gui = ["tkinterdnd2>=0.4"]
+build = ["pyinstaller>=6.0", "tkinterdnd2>=0.4"]
 
 [project.scripts]
 spass-csv-converter = "spass_csv_converter.__main__:main"
