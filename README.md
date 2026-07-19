@@ -84,9 +84,21 @@ python3 -m spass_csv_converter --gui
 ```
 
 화면에서 `spass_export_data.spass` 파일을 고르고 Samsung Pass에서 설정했던 내보내기 비밀번호를 입력한 뒤 형식을 선택해 변환합니다. 비밀번호 표시 토글, 변환 후 저장 폴더 열기 버튼을 지원하며, `pip install "spass-csv-converter[gui]"`로 `tkinterdnd2`를 설치하면 창에 파일을 끌어다 놓을 수도 있습니다.
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/3cdbee2d-2dec-4317-9341-eec93b2e86a7" width="600" alt="SPass CSV Converter GUI">
-</p>
+<table>
+  <tr>
+    <td width="50%">
+      <img src="https://github.com/user-attachments/assets/3af4c31c-8b4e-4976-a464-cd078e067783" width="100%" alt="Windows" />
+    </td>
+    <td width="50%">
+      <img src="https://github.com/user-attachments/assets/eb18a964-f9ef-4d08-8d53-679f54f47bf7" width="100%" alt="mac_os" />
+    </td>
+  </tr>
+    <!-- 설명 자막 행 (텍스트 중앙 정렬) -->
+  <tr align="center">
+    <td>Windows 버전 화면</td>
+    <td>macOS 버전 화면</td>
+</table>
+
 
 ### 명령어로 실행
 
